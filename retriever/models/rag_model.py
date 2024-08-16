@@ -1,9 +1,12 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, pipeline, BitsAndBytesConfig
 from langchain_huggingface import HuggingFacePipeline
-from langchain.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
+
+import torch
+import torch.nn.utils.prune as prune
 
 def load_rag_model():
     model_name = "meta-llama/Meta-Llama-3.1-8B-Instruct"
@@ -14,8 +17,6 @@ def load_rag_model():
                                                  device_map="auto",
                                                  config=bnb_config,
                                                  trust_remote_code=True)
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
     gen_cfg = GenerationConfig.from_pretrained(model_name)
     gen_cfg.max_new_tokens = 512
@@ -32,6 +33,8 @@ def load_rag_model():
     )
 
     llm = HuggingFacePipeline(pipeline=pipe)
+    
+    print("created pipeline")
 
     # Load embeddings
     embedding_model_name = "sentence-transformers/all-mpnet-base-v2"
@@ -42,6 +45,8 @@ def load_rag_model():
     )
 
     vector_store = FAISS.load_local("vector_db", embeddings, allow_dangerous_deserialization=True)
+    
+    print("loaded vector store")
 
     # Prompt template
     prompt_template_llama3 = """
@@ -65,5 +70,7 @@ def load_rag_model():
         retriever=vector_store.as_retriever(search_type="similarity_score_threshold", search_kwargs={'k': 5, 'score_threshold': 0.2}),
         chain_type_kwargs={"prompt": prompt},
     )
+    
+    print("created retrieval chain")
 
     return Chain_pdf
