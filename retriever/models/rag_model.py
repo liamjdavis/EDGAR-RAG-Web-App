@@ -4,11 +4,11 @@ from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
-
+from huggingface_hub import login
 import torch
-import torch.nn.utils.prune as prune
 
 def load_rag_model():
+    login("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")
     model_name = "meta-llama/Meta-Llama-3.1-8B-Instruct"
     
     bnb_config = BitsAndBytesConfig()
@@ -24,6 +24,8 @@ def load_rag_model():
     gen_cfg.return_full_text = True
     gen_cfg.do_sample = True
     gen_cfg.repetition_penalty = 1.11
+    
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
 
     pipe = pipeline(
         task="text-generation",
@@ -34,34 +36,36 @@ def load_rag_model():
 
     llm = HuggingFacePipeline(pipeline=pipe)
     
-    print("created pipeline")
-
-    # Load embeddings
-    embedding_model_name = "sentence-transformers/all-mpnet-base-v2"
-    
-    embeddings = HuggingFaceEmbeddings(
-        model_name=embedding_model_name,
-        multi_process=True,
-    )
-
-    vector_store = FAISS.load_local("vector_db", embeddings, allow_dangerous_deserialization=True)
-    
-    print("loaded vector store")
-
     # Prompt template
     prompt_template_llama3 = """
-    system
+    <|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
     Use the following context to answer the question at the end. Report anything that remotely resembles what the question is asking. 
     Be sure to be specific in describing what you are reporting. If you do not have enough information to answer the 
-    question, state that, then report similar figures. Cite the statements you use in your response by company and form type.
+    question, state that, then report similar figures. Cite the statement for each figure your report by company, form type and page number.
 
-    {context}assistant
+    {context}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 
-    {question}assistant
+    {question}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
     """
 
-    prompt = PromptTemplate(template=prompt_template_llama3, input_variables=["context", "question"])
+    prompt_template=prompt_template_llama3
+
+    prompt = PromptTemplate(
+        input_variables=["text"],
+        template=prompt_template,
+    )
+    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
+
+    # Load embeddings
+    embedding_model_name = "sentence-transformers/all-mpnet-base-v2"
+
+    embeddings = HuggingFaceEmbeddings(
+        model_name=embedding_model_name,
+
+    )
+
+    vector_store = FAISS.load_local("../../vector_db", embeddings, allow_dangerous_deserialization=True)
 
     # RetrievalQA chain
     Chain_pdf = RetrievalQA.from_chain_type(
@@ -70,7 +74,5 @@ def load_rag_model():
         retriever=vector_store.as_retriever(search_type="similarity_score_threshold", search_kwargs={'k': 5, 'score_threshold': 0.2}),
         chain_type_kwargs={"prompt": prompt},
     )
-    
-    print("created retrieval chain")
 
     return Chain_pdf
