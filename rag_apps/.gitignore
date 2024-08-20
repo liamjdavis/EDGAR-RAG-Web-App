@@ -1,0 +1,12 @@
+# env files
+retriever/.env
+user-backend/.env
+
+# Dockerfiles
+docker-compose.yml
+retriever/Dockerfile
+user-backend/Dockerfile
+vector_db/Dockerfile
+
+# vector db
+vector_db
