@@ -33,6 +33,20 @@ export default function Dashboard() {
         }
     };
 
+    const handleLogout = async () => {
+        try {
+            // Send a POST request to the logout API to clear the token cookie
+            await axios.post('/api/logout');
+            
+            console.log('User logged out');
+    
+            // Redirect to the login page or perform other logout actions
+            window.location.href = '/';
+        } catch (error) {
+            console.error('Error during logout:', error);
+        }
+    };
+
     return (
         <div className="flex min-h-screen bg-gray-100">
             <div className="w-1/4 p-4 bg-white border-r">
@@ -52,6 +66,12 @@ export default function Dashboard() {
                         Chat 2
                     </li>
                 </ul>
+                <button
+                    onClick={handleLogout}
+                    className="px-4 py-2 mt-4 font-bold text-white bg-red-500 rounded hover:bg-red-700"
+                >
+                    Logout
+                </button>
             </div>
             <div className="flex-1 p-4">
                 <h2 className="mb-4 text-xl font-bold">Chat Interface</h2>

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { generateToken } from '../../utils/auth';
 
 export default async (req, res) => {
     if (req.method === 'POST') {
@@ -13,6 +14,12 @@ export default async (req, res) => {
                     'Content-Type': 'application/json'
                 }
             });
+
+            // Generate JWT token
+            const token = generateToken({ email });
+
+            // Set token in HTTP-only cookie
+            res.setHeader('Set-Cookie', `access_token=${token}; HttpOnly; Path=/; Max-Age=1800;`);
 
             res.status(200).json(response.data);
         } catch (error) {
