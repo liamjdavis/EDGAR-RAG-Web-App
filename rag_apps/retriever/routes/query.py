@@ -8,11 +8,11 @@ router = APIRouter()
 rag_model = load_rag_model()
 print("loaded rag model")
 
-@router.get("/ping")
+@router.get("/ping/")
 async def ping():
     return {"message": "pong"}
 
-@router.post("/retrieve")
+@router.post("/retrieve/")
 async def retrieve(query: Query):
     try:
         # Use your RetrievalQA chain to get the answer

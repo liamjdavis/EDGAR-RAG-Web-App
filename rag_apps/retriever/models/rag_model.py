@@ -50,14 +50,16 @@ def load_rag_model():
     You are an assistant for a financial analyst. Use the following context to answer the question at the end. 
     Be sure to be specific in describing what you are reporting, including any necessary information to understand your response. 
     If you do not have enough information to answer the question, state that, then report similar figures. 
-    For each figure, cite the statement where the figure can be found. Return in this format:
+    For each figure, cite the statement where the figure can be found. 
+    
+    Return in this format:
     
     <response>
     [The text of your response]
     </response>
     
     <citation>
-    [The text of your citation in the following format: (Company, Form Type, Page Number)]
+    [The citation in the following format: (Company, Form Type, Page Number)]
     </citation>
     
     {context}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
