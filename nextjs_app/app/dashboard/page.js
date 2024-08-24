@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import axios from 'axios';
+import { useRouter } from 'next/navigation';
+import withAuth from '../../components/withAuth';
 
-export default function Dashboard() {
+function Dashboard() {
+    const router = useRouter();
     const [selectedChat, setSelectedChat] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
@@ -51,7 +54,7 @@ export default function Dashboard() {
             console.log('User logged out');
     
             // Redirect to the login page or perform other logout actions
-            window.location.href = '/';
+            router.push('/');
         } catch (error) {
             console.error('Error during logout:', error);
         }
@@ -113,3 +116,5 @@ export default function Dashboard() {
         </div>
     );
 }
+
+export default withAuth(Dashboard);
