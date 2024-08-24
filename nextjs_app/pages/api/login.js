@@ -6,7 +6,7 @@ export default async (req, res) => {
         const { email, password } = req.body;
 
         try {
-            const response = await axios.post('http://user_db_container:8000/login/', {
+            const response = await axios.post('http://user_backend:8000/login/', {
                 email,
                 password
             }, {

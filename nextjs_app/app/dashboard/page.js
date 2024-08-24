@@ -7,6 +7,7 @@ export default function Dashboard() {
     const [selectedChat, setSelectedChat] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
 
     const handleChatSelect = (chat) => {
         setSelectedChat(chat);
@@ -17,6 +18,10 @@ export default function Dashboard() {
         e.preventDefault();
         if (!newMessage.trim()) return;
 
+        setMessages([...messages, { sender: 'user', text: newMessage }, { sender: 'bot', text: 'Generating response, this may take a minute ...' }]);
+        setNewMessage('');
+        setIsGenerating(true);
+
         try {
             const response = await axios.post('/api/retrieve', {
                 question: newMessage
@@ -26,10 +31,15 @@ export default function Dashboard() {
                 }
             });
 
-            setMessages([...messages, { sender: 'user', text: newMessage }, { sender: 'bot', text: response.data.answer }]);
-            setNewMessage('');
+            setMessages((prevMessages) => {
+                const updatedMessages = [...prevMessages];
+                updatedMessages[updatedMessages.length - 1] = { sender: 'bot', text: response.data.answer };
+                return updatedMessages;
+            });
+            setIsGenerating(false);
         } catch (error) {
             console.error('Error sending message:', error);
+            setIsGenerating(false);
         }
     };
 
@@ -49,23 +59,25 @@ export default function Dashboard() {
 
     return (
         <div className="flex min-h-screen bg-gray-100">
-            <div className="w-1/4 p-4 bg-white border-r">
-                <h2 className="mb-4 text-xl font-bold">Chats</h2>
-                <ul>
-                    {/* Replace with dynamic chat list */}
-                    <li
-                        className={`p-2 mb-2 cursor-pointer ${selectedChat === 'Chat 1' ? 'bg-gray-200' : ''}`}
-                        onClick={() => handleChatSelect('Chat 1')}
-                    >
-                        Chat 1
-                    </li>
-                    <li
-                        className={`p-2 mb-2 cursor-pointer ${selectedChat === 'Chat 2' ? 'bg-gray-200' : ''}`}
-                        onClick={() => handleChatSelect('Chat 2')}
-                    >
-                        Chat 2
-                    </li>
-                </ul>
+            <div className="w-1/4 p-4 bg-white border-r flex flex-col justify-between">
+                <div>
+                    <h2 className="mb-4 text-xl font-bold">Chats</h2>
+                    <ul>
+                        {/* Replace with dynamic chat list */}
+                        <li
+                            className={`p-2 mb-2 cursor-pointer ${selectedChat === 'Chat 1' ? 'bg-gray-200' : ''}`}
+                            onClick={() => handleChatSelect('Chat 1')}
+                        >
+                            Chat 1
+                        </li>
+                        <li
+                            className={`p-2 mb-2 cursor-pointer ${selectedChat === 'Chat 2' ? 'bg-gray-200' : ''}`}
+                            onClick={() => handleChatSelect('Chat 2')}
+                        >
+                            Chat 2
+                        </li>
+                    </ul>
+                </div>
                 <button
                     onClick={handleLogout}
                     className="px-4 py-2 mt-4 font-bold text-white bg-red-500 rounded hover:bg-red-700"
@@ -73,9 +85,8 @@ export default function Dashboard() {
                     Logout
                 </button>
             </div>
-            <div className="flex-1 p-4">
-                <h2 className="mb-4 text-xl font-bold">Chat Interface</h2>
-                <div className="h-96 p-4 mb-4 bg-white border rounded overflow-y-scroll">
+            <div className="flex-1 p-4 flex flex-col">
+                <div className="flex-1 p-4 mb-4 bg-white border rounded overflow-y-scroll">
                     {/* Replace with dynamic messages */}
                     {messages.map((message, index) => (
                         <div key={index} className={`mb-2 ${message.sender === 'user' ? 'text-right' : 'text-left'}`}>

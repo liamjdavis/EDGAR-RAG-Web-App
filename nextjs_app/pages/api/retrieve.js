@@ -5,7 +5,7 @@ export default async (req, res) => {
         const { question } = req.body;
 
         try {
-            const response = await axios.post('http://retriever_container:80/retrieve/', {
+            const response = await axios.post('http://retriever:8000/retrieve/', {
                 question
             }, {
                 headers: {

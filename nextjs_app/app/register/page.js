@@ -6,6 +6,7 @@ import axios from 'axios';
 export default function Register() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [isClient, setIsClient] = useState(false);
 
@@ -16,6 +17,11 @@ export default function Register() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        if (password !== confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
         try {
             const response = await axios.post('/api/register', { email, password });
             if (response.status === 201) {
@@ -24,7 +30,7 @@ export default function Register() {
                 window.location.href = '/dashboard';
             }
         } catch (error) {
-            console.error('Registration error:', error)
+            console.error('Registration error:', error);
             setError('Registration failed');
         }
     };
@@ -55,6 +61,16 @@ export default function Register() {
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            className="w-full px-3 py-2 border rounded"
+                            required
+                        />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block mb-2 text-sm font-bold text-gray-700">Confirm Password</label>
+                        <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
                             className="w-full px-3 py-2 border rounded"
                             required
                         />
