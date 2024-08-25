@@ -6,27 +6,79 @@ import { useRouter } from 'next/navigation';
 
 function Dashboard() {
     const router = useRouter();
+    const [threads, setThreads] = useState([]);
     const [selectedChat, setSelectedChat] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
 
-    // check for login
+    // Function to check authentication
+    const checkAuth = async () => {
+        try {
+            await axios.get('/api/protected');
+            return true;
+        } catch (error) {
+            window.location.href = '/';
+            return false;
+        }
+    };
+
+    // Function to create a new thread
+    const createNewThread = async (threadId) => {
+        try {
+            const response = await axios.post('/api/addThread', { thread_id: threadId });
+            return response.data;
+        } catch (error) {
+            console.error('Error creating new thread:', error);
+        }
+    };
+
+    // Function to load threads
+    const loadThreads = async () => {
+        try {
+            const response = await axios.get('/api/threads');
+            let sortedThreads = response.data.sort((a, b) => a.id - b.id);
+            
+            // If there are no threads, create thread with ID 0
+            if (sortedThreads.length === 0) {
+                const newThread = await createNewThread(0);
+                sortedThreads = [newThread];
+            } else {
+                // Check if we need to create a new thread
+                const lastThreadId = sortedThreads[sortedThreads.length - 1].id;
+                const newThreadId = lastThreadId + 1;
+                const newThread = await createNewThread(newThreadId);
+                sortedThreads.push(newThread);
+            }
+
+            setThreads(sortedThreads);
+            if (sortedThreads.length > 0) {
+                handleChatSelect(sortedThreads[0].id);
+            }
+        } catch (error) {
+            console.error('Error loading threads:', error);
+        }
+    };
+
+    // UseEffect for authentication check and thread creation
     useEffect(() => {
-        const checkAuth = async () => {
-            try {
-                await axios.get('/api/protected');
-            } catch (error) {
-                window.location.href = '/';
+        const initDashboard = async () => {
+            const isAuthenticated = await checkAuth();
+            if (isAuthenticated) {
+                await loadThreads();
             }
         };
-
-        checkAuth();
+        initDashboard();
     }, [router]);
 
-    const handleChatSelect = (chat) => {
-        setSelectedChat(chat);
-        // Load chat messages here
+    const handleChatSelect = async (threadId) => {
+        setSelectedChat(threadId);
+        try {
+            const response = await axios.get(`/api/threads/${threadId}/chats`);
+            setMessages(response.data);
+        } catch (error) {
+            console.error('Error loading chats:', error);
+        }
     };
 
     const handleSendMessage = async (e) => {
@@ -67,26 +119,41 @@ function Dashboard() {
         }
     };
 
+    const handleCreateNewChat = async () => {
+        try {
+            const lastThreadId = threads.length > 0 ? threads[threads.length - 1].id : 0;
+            const newThreadId = lastThreadId + 1;
+            const newThread = await createNewThread(newThreadId);
+            setThreads([...threads, newThread]);
+            handleChatSelect(newThread.id);
+        } catch (error) {
+            console.error('Error creating new chat:', error);
+        }
+    };
+
     return (
         <div className="flex min-h-screen bg-gray-100">
             <div className="w-1/4 p-4 bg-white border-r flex flex-col justify-between">
-                <div>
-                    <h2 className="mb-4 text-xl font-bold">Chats</h2>
-                    <ul>
-                        <li
-                            className={`p-2 mb-2 cursor-pointer ${selectedChat === 'Chat 1' ? 'bg-gray-200' : ''}`}
-                            onClick={() => handleChatSelect('Chat 1')}
-                        >
-                            Chat 1
-                        </li>
-                        <li
-                            className={`p-2 mb-2 cursor-pointer ${selectedChat === 'Chat 2' ? 'bg-gray-200' : ''}`}
-                            onClick={() => handleChatSelect('Chat 2')}
-                        >
-                            Chat 2
-                        </li>
-                    </ul>
+                <div className="flex justify-between items-center mb-2">
+                    <h2 className="text-xl font-bold">Chats</h2>
+                    <button
+                        onClick={handleCreateNewChat}
+                        className="px-2 py-1 ml-2 font-bold text-white bg-green-500 rounded hover:bg-green-700"
+                    >
+                        + Create new Chat
+                    </button>
                 </div>
+                <ul className="list-none p-0 m-0 flex-1 overflow-y-auto">
+                    {threads.map((thread) => (
+                        <li
+                            key={thread.id}
+                            className={`p-2 mb-2 cursor-pointer ${selectedChat === thread.id ? 'bg-gray-200' : ''}`}
+                            onClick={() => handleChatSelect(thread.id)}
+                        >
+                            Chat {thread.id}
+                        </li>
+                    ))}
+                </ul>
                 <button
                     onClick={handleLogout}
                     className="px-4 py-2 mt-4 font-bold text-white bg-red-500 rounded hover:bg-red-700"

@@ -2,7 +2,9 @@ import axios from 'axios';
 import cookie from 'cookie';
 
 export default async function handler(req, res) {
-    if (req.method !== 'GET') {
+    const { threadId } = req.query;
+
+    if (req.method !== 'POST') {
         return res.status(405).end(); // Method Not Allowed
     }
 
@@ -13,18 +15,21 @@ export default async function handler(req, res) {
         return res.status(401).json({ message: 'User ID not found in cookies' });
     }
 
+    const { message } = req.body;
+
     try {
-        const response = await axios.get(`http://user_backend:8000/threads/`, {
+        const response = await axios.post(`http://your_fastapi_backend/threads/${threadId}/chats/`, {
+            thread_id: parseInt(threadId),
+            user_id: parseInt(userId),
+            message
+        }, {
             headers: {
                 'Content-Type': 'application/json',
             },
-            params: {
-                user_id: userId,  // Pass user_id as a query parameter
-            },
         });
 
-        res.status(200).json(response.data);
+        res.status(201).json(response.data);
     } catch (error) {
-        res.status(500).json({ message: 'Error retrieving threads' });
+        res.status(500).json({ message: 'Error adding chat' });
     }
 }

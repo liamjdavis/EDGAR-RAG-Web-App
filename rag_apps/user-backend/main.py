@@ -8,6 +8,10 @@ import bcrypt
 from dotenv import load_dotenv
 import os
 
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -53,14 +57,13 @@ class UserCreate(BaseModel):
 class Thread(Base):
     __tablename__ = "threads"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, nullable=False)
+    user_id = Column(Integer, nullable=False)  # Added user_id column
     thread_id = Column(Integer, nullable=False, unique=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
     
 class ThreadCreate(BaseModel):
     user_id: int
     thread_id: int
-    title: str
 
 class Chat(Base):
     __tablename__ = "chats"
@@ -75,7 +78,12 @@ class ChatCreate(BaseModel):
     user_id: int
     message: str
 
+# Drop all tables
+Base.metadata.drop_all(bind=engine)
+
+# Call the log_tables function after creating all tables
 Base.metadata.create_all(bind=engine)
+log_tables()
 
 def get_db():
     db = SessionLocal()
@@ -84,7 +92,21 @@ def get_db():
     finally:
         db.close()
 
-# registration endpoint
+# Function to create initial threads and chats if needed
+def create_initial_data(user_id: int, db: Session):
+    # Check if there are any threads for the user
+    existing_threads = db.query(Thread).filter(Thread.user_id == user_id).all()
+    if not existing_threads:
+        # Optionally, create default threads here if needed
+        pass
+
+    # Check if there are any chats for the user
+    existing_chats = db.query(Chat).filter(Chat.user_id == user_id).all()
+    if not existing_chats:
+        # Optionally, create default chats here if needed
+        pass
+
+# Registration endpoint
 @app.post("/register/")
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
@@ -98,31 +120,42 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # Create initial threads and chats for the new user
+    create_initial_data(new_user.id, db)
+
     return new_user
 
-# login endpoint
+# Login endpoint
 @app.post("/login/")
 def login_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not bcrypt.checkpw(user.password.encode('utf-8'), db_user.password.encode('utf-8')):
         raise HTTPException(status_code=400, detail="Invalid credentials")
+    
+    # Create initial threads and chats for the logged-in user
+    create_initial_data(db_user.id, db)
+
     return {"message": "Login successful"}
 
-# retrieve user ID
-@app.get("/users/id/")
+# Retrieve user ID by email
+@app.get("/userid/")
 def get_user_id_by_email(email: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"user_id": user.id}
 
-# retrieve threads
+# Retrieve threads by user_id
 @app.get("/threads/")
-def get_threads(db: Session = Depends(get_db)):
-    threads = db.query(Thread).all()
+def get_threads(user_id: int = None, db: Session = Depends(get_db)):
+    if user_id:
+        threads = db.query(Thread).filter(Thread.user_id == user_id).all()
+    else:
+        threads = db.query(Thread).all()
     return threads
 
-# add threads
+# Add threads
 @app.post("/threads/")
 def create_thread(thread: ThreadCreate, db: Session = Depends(get_db)):
     db_thread = db.query(Thread).filter(Thread.thread_id == thread.thread_id).first()
@@ -131,8 +164,7 @@ def create_thread(thread: ThreadCreate, db: Session = Depends(get_db)):
     
     new_thread = Thread(
         user_id=thread.user_id,
-        thread_id=thread.thread_id,
-        title=thread.title
+        thread_id=thread.thread_id
     )
     
     db.add(new_thread)
@@ -140,13 +172,13 @@ def create_thread(thread: ThreadCreate, db: Session = Depends(get_db)):
     db.refresh(new_thread)
     return new_thread
 
-# retrieve chats
+# Retrieve chats
 @app.get("/threads/{thread_id}/chats/")
 def get_chats(thread_id: int, db: Session = Depends(get_db)):
     chats = db.query(Chat).filter(Chat.thread_id == thread_id).all()
     return chats
 
-# add chats
+# Add chats
 @app.post("/threads/{thread_id}/chats/")
 def create_chat(thread_id: int, chat: ChatCreate, db: Session = Depends(get_db)):
     new_chat = Chat(
