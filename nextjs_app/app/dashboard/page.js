@@ -1,16 +1,37 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import withAuth from '../../components/withAuth';
 
 function Dashboard() {
     const router = useRouter();
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [loading, setLoading] = useState(true);
+
     const [selectedChat, setSelectedChat] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const response = await axios.get('/api/checkAuth');
+                if (response.status === 200) {
+                    setIsAuthenticated(true);
+                } else {
+                    router.push('/');
+                }
+            } catch (error) {
+                router.push('/');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        checkAuth();
+    }, [router]);
 
     const handleChatSelect = (chat) => {
         setSelectedChat(chat);
@@ -60,6 +81,14 @@ function Dashboard() {
         }
     };
 
+    if (loading) {
+        return <div>Loading...</div>;
+    }
+
+    if (!isAuthenticated) {
+        return null;
+    }
+
     return (
         <div className="flex min-h-screen bg-gray-100">
             <div className="w-1/4 p-4 bg-white border-r flex flex-col justify-between">
@@ -108,7 +137,7 @@ function Dashboard() {
                         placeholder="Type a message..."
                         required
                     />
-                    <button type="submit" className="px-4 py-2 ml-2 font-bold text-white bg-blue-500 rounded hover:bg-blue-700">
+                    <button type="submit" className="px-4 py-2 ml-2 font-bold text-white bg-blue-500 rounded hover:bg-blue-700" disabled={isGenerating}>
                         Send
                     </button>
                 </form>
@@ -117,4 +146,4 @@ function Dashboard() {
     );
 }
 
-export default withAuth(Dashboard);
+export default Dashboard;
