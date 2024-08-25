@@ -1,32 +1,23 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
 function Dashboard() {
     const router = useRouter();
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [loading, setLoading] = useState(true);
-
     const [selectedChat, setSelectedChat] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
 
+    // check for login
     useEffect(() => {
         const checkAuth = async () => {
             try {
-                const response = await axios.get('/api/checkAuth');
-                if (response.status === 200) {
-                    setIsAuthenticated(true);
-                } else {
-                    router.push('/');
-                }
+                await axios.get('/api/protected');
             } catch (error) {
-                router.push('/');
-            } finally {
-                setLoading(false);
+                window.location.href = '/';
             }
         };
 
@@ -75,21 +66,6 @@ function Dashboard() {
             console.error('Error during logout:', error);
         }
     };
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                <div className="text-center">
-                    <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
-                    <p className="mt-4 text-lg font-medium text-gray-700">Loading...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (!isAuthenticated) {
-        return null;
-    }
 
     return (
         <div className="flex min-h-screen bg-gray-100">

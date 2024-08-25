@@ -1,17 +1,14 @@
 import axios from 'axios';
-import { hashPassword } from '../../utils/auth';
 
 export default async (req, res) => {
     if (req.method === 'POST') {
         const { email, password } = req.body;
 
         try {
-            // Hash the password before sending it to the backend
-            const hashedPassword = await hashPassword(password);
 
             const response = await axios.post('http://user_backend:8000/register/', {
                 email,
-                password: hashedPassword
+                password,
             }, {
                 headers: {
                     'Content-Type': 'application/json'
