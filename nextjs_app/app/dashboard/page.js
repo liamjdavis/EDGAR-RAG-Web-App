@@ -69,12 +69,7 @@ function Dashboard() {
 
     const handleLogout = async () => {
         try {
-            // Send a POST request to the logout API to clear the token cookie
             await axios.post('/api/logout');
-            
-            console.log('User logged out');
-    
-            // Redirect to the login page or perform other logout actions
             router.push('/');
         } catch (error) {
             console.error('Error during logout:', error);
@@ -82,7 +77,14 @@ function Dashboard() {
     };
 
     if (loading) {
-        return <div>Loading...</div>;
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-gray-100">
+                <div className="text-center">
+                    <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
+                    <p className="mt-4 text-lg font-medium text-gray-700">Loading...</p>
+                </div>
+            </div>
+        );
     }
 
     if (!isAuthenticated) {
@@ -95,7 +97,6 @@ function Dashboard() {
                 <div>
                     <h2 className="mb-4 text-xl font-bold">Chats</h2>
                     <ul>
-                        {/* Replace with dynamic chat list */}
                         <li
                             className={`p-2 mb-2 cursor-pointer ${selectedChat === 'Chat 1' ? 'bg-gray-200' : ''}`}
                             onClick={() => handleChatSelect('Chat 1')}
@@ -119,7 +120,6 @@ function Dashboard() {
             </div>
             <div className="flex-1 p-4 flex flex-col">
                 <div className="flex-1 p-4 mb-4 bg-white border rounded overflow-y-scroll">
-                    {/* Replace with dynamic messages */}
                     {messages.map((message, index) => (
                         <div key={index} className={`mb-2 ${message.sender === 'user' ? 'text-right' : 'text-left'}`}>
                             <span className={`inline-block p-2 rounded ${message.sender === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>
