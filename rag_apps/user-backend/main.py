@@ -49,6 +49,31 @@ class User(Base):
 class UserCreate(BaseModel):
     email: str
     password: str
+    
+class Thread(Base):
+    __tablename__ = "threads"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False)
+    thread_id = Column(Integer, nullable=False, unique=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    
+class ThreadCreate(BaseModel):
+    user_id: int
+    thread_id: int
+    title: str
+
+class Chat(Base):
+    __tablename__ = "chats"
+    id = Column(Integer, primary_key=True, index=True)
+    thread_id = Column(Integer, nullable=False)
+    user_id = Column(Integer, nullable=False)
+    message = Column(String, nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    
+class ChatCreate(BaseModel):
+    thread_id: int
+    user_id: int
+    message: str
 
 Base.metadata.create_all(bind=engine)
 
@@ -59,6 +84,7 @@ def get_db():
     finally:
         db.close()
 
+# registration endpoint
 @app.post("/register/")
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
@@ -74,9 +100,62 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
+# login endpoint
 @app.post("/login/")
 def login_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not bcrypt.checkpw(user.password.encode('utf-8'), db_user.password.encode('utf-8')):
         raise HTTPException(status_code=400, detail="Invalid credentials")
     return {"message": "Login successful"}
+
+# retrieve user ID
+@app.get("/users/id/")
+def get_user_id_by_email(email: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user_id": user.id}
+
+# retrieve threads
+@app.get("/threads/")
+def get_threads(db: Session = Depends(get_db)):
+    threads = db.query(Thread).all()
+    return threads
+
+# add threads
+@app.post("/threads/")
+def create_thread(thread: ThreadCreate, db: Session = Depends(get_db)):
+    db_thread = db.query(Thread).filter(Thread.thread_id == thread.thread_id).first()
+    if db_thread:
+        raise HTTPException(status_code=400, detail="Thread ID already exists")
+    
+    new_thread = Thread(
+        user_id=thread.user_id,
+        thread_id=thread.thread_id,
+        title=thread.title
+    )
+    
+    db.add(new_thread)
+    db.commit()
+    db.refresh(new_thread)
+    return new_thread
+
+# retrieve chats
+@app.get("/threads/{thread_id}/chats/")
+def get_chats(thread_id: int, db: Session = Depends(get_db)):
+    chats = db.query(Chat).filter(Chat.thread_id == thread_id).all()
+    return chats
+
+# add chats
+@app.post("/threads/{thread_id}/chats/")
+def create_chat(thread_id: int, chat: ChatCreate, db: Session = Depends(get_db)):
+    new_chat = Chat(
+        thread_id=thread_id,
+        user_id=chat.user_id,
+        message=chat.message
+    )
+    
+    db.add(new_chat)
+    db.commit()
+    db.refresh(new_chat)
+    return new_chat
