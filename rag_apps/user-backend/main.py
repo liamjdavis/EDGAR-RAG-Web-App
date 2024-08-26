@@ -83,7 +83,6 @@ Base.metadata.drop_all(bind=engine)
 
 # Call the log_tables function after creating all tables
 Base.metadata.create_all(bind=engine)
-log_tables()
 
 def get_db():
     db = SessionLocal()
@@ -191,3 +190,22 @@ def create_chat(thread_id: int, chat: ChatCreate, db: Session = Depends(get_db))
     db.commit()
     db.refresh(new_chat)
     return new_chat
+
+# delete threads
+# Delete thread and its chats
+@app.delete("/threads/{thread_id}/")
+def delete_thread(thread_id: int, db: Session = Depends(get_db)):
+    # Fetch the thread
+    thread = db.query(Thread).filter(Thread.id == thread_id).first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    
+    # Delete all chats associated with the thread
+    db.query(Chat).filter(Chat.thread_id == thread_id).delete()
+    
+    # Delete the thread itself
+    db.delete(thread)
+    db.commit()
+    
+    return {"message": "Thread and its chats deleted successfully"}
+

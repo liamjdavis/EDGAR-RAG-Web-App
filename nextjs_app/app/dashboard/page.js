@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import { FaTrash } from 'react-icons/fa';
+import Cookies from 'js-cookie';
 
 function Dashboard() {
     const router = useRouter();
@@ -23,13 +25,39 @@ function Dashboard() {
         }
     };
 
-    // Function to create a new thread
-    const createNewThread = async (threadId) => {
+    let counter = 0;
+
+    // Function to create a new thread with a timestamp-based ID
+    const createNewThread = async () => {
         try {
+            const threadId = (Date.now() % 1000000) + counter++;
             const response = await axios.post('/api/addThread', { thread_id: threadId });
             return response.data;
         } catch (error) {
             console.error('Error creating new thread:', error);
+        }
+    };
+
+    // Function to delete a thread
+    const deleteThread = async (threadId) => {
+        try {
+            await axios.delete('/api/deleteThread', {
+                data: { thread_id: threadId }
+            });
+            const updatedThreads = threads.filter(thread => thread.id !== threadId);
+            setThreads(updatedThreads);
+            if (selectedChat === threadId) {
+                setSelectedChat(null);
+                setMessages([]);
+            }
+            if (updatedThreads.length === 0) {
+                const newThread = await createNewThread();
+                setThreads([newThread]);
+                setSelectedChat(newThread.id);
+                setMessages([]);
+            }
+        } catch (error) {
+            console.error('Error deleting thread:', error);
         }
     };
 
@@ -39,14 +67,14 @@ function Dashboard() {
             const response = await axios.get('/api/threads');
             let sortedThreads = response.data.sort((a, b) => a.id - b.id);
             
-            // If there are no threads, create thread with ID 0
+            // If there are no threads, create a thread with a timestamp-based ID
             if (sortedThreads.length === 0) {
-                const newThread = await createNewThread(0);
+                const newThread = await createNewThread();
                 sortedThreads = [newThread];
             } else {
                 // Check if we need to create a new thread
                 const lastThreadId = sortedThreads[sortedThreads.length - 1].id;
-                const newThreadId = lastThreadId + 1;
+                const newThreadId = Date.now();
                 const newThread = await createNewThread(newThreadId);
                 sortedThreads.push(newThread);
             }
@@ -60,7 +88,7 @@ function Dashboard() {
         }
     };
 
-    // UseEffect for authentication check and thread creation
+    // UseEffect for authentication check and thread loading
     useEffect(() => {
         const initDashboard = async () => {
             const isAuthenticated = await checkAuth();
@@ -85,11 +113,15 @@ function Dashboard() {
         e.preventDefault();
         if (!newMessage.trim()) return;
 
-        setMessages([...messages, { sender: 'user', text: newMessage }, { sender: 'bot', text: 'Generating response, this may take a minute ...' }]);
+        const userMessage = { sender: 'user', text: newMessage };
+        const botMessage = { sender: 'bot', text: 'Generating response, this may take a minute ...' };
+
+        setMessages([...messages, userMessage, botMessage]);
         setNewMessage('');
         setIsGenerating(true);
 
         try {
+            // Generate the bot response
             const response = await axios.post('/api/retrieve', {
                 question: newMessage
             }, {
@@ -97,17 +129,41 @@ function Dashboard() {
                     'Content-Type': 'application/json'
                 }
             });
-
+        
+            const botResponse = { sender: 'bot', text: response.data.answer };
+        
+            // Update state with the new messages
             setMessages((prevMessages) => {
-                const updatedMessages = [...prevMessages];
-                updatedMessages[updatedMessages.length - 1] = { sender: 'bot', text: response.data.answer };
+                const updatedMessages = [...prevMessages, { sender: 'user', text: newMessage }, botResponse];
                 return updatedMessages;
             });
+        
+            // Retrieve userID and save messages
+            const userID = Cookies.get('user_id'); // Retrieve userID from cookie
+        
+            if (!userID) {
+                throw new Error('User ID not found in cookies');
+            }
+            
+            // save chats
+            await Promise.all([
+                axios.post(`/api/addChat`, {
+                    thread_id: selectedChat,
+                    user_id: userID, // Use retrieved user ID
+                    message: newMessage
+                }),
+                axios.post(`/api/addChat`, {
+                    thread_id: selectedChat,
+                    user_id: userID, // Use retrieved user ID
+                    message: response.data.answer
+                })
+            ]);
+        
             setIsGenerating(false);
         } catch (error) {
             console.error('Error sending message:', error);
             setIsGenerating(false);
-        }
+        }        
     };
 
     const handleLogout = async () => {
@@ -121,9 +177,7 @@ function Dashboard() {
 
     const handleCreateNewChat = async () => {
         try {
-            const lastThreadId = threads.length > 0 ? threads[threads.length - 1].id : 0;
-            const newThreadId = lastThreadId + 1;
-            const newThread = await createNewThread(newThreadId);
+            const newThread = await createNewThread();
             setThreads([...threads, newThread]);
             handleChatSelect(newThread.id);
         } catch (error) {
@@ -147,10 +201,17 @@ function Dashboard() {
                     {threads.map((thread) => (
                         <li
                             key={thread.id}
-                            className={`p-2 mb-2 cursor-pointer ${selectedChat === thread.id ? 'bg-gray-200' : ''}`}
+                            className={`p-2 mb-2 cursor-pointer flex justify-between items-center ${selectedChat === thread.id ? 'bg-gray-200' : ''}`}
                             onClick={() => handleChatSelect(thread.id)}
                         >
-                            Chat {thread.id}
+                            <span>Chat {thread.id}</span>
+                            <FaTrash
+                                className="text-red-500 cursor-pointer hover:text-red-700"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteThread(thread.id);
+                                }}
+                            />
                         </li>
                     ))}
                 </ul>

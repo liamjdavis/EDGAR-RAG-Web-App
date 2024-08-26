@@ -18,15 +18,17 @@ export default async function handler(req, res) {
     const { message } = req.body;
 
     try {
-        const response = await axios.post(`http://your_fastapi_backend/threads/${threadId}/chats/`, {
+        const response = await axios.post(`http://user_backend:8000/threads/${threadId}/chats/`, {
             thread_id: parseInt(threadId),
             user_id: parseInt(userId),
-            message
+            message,
         }, {
             headers: {
                 'Content-Type': 'application/json',
             },
         });
+
+        console.log('response', response.data);
 
         res.status(201).json(response.data);
     } catch (error) {
