@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, TIMESTAMP, func
@@ -147,52 +147,31 @@ def get_user_id_by_email(email: str, db: Session = Depends(get_db)):
 
 # Retrieve threads by user_id
 @app.get("/threads/")
-def get_threads(user_id: int = None, db: Session = Depends(get_db)):
-    if user_id:
-        threads = db.query(Thread).filter(Thread.user_id == user_id).all()
-    else:
-        threads = db.query(Thread).all()
+def get_threads(user_id: int = Query(...), db: Session = Depends(get_db)):
+    threads = db.query(Thread).filter(Thread.user_id == user_id).all()
     return threads
 
-# Add threads
 @app.post("/threads/")
 def create_thread(thread: ThreadCreate, db: Session = Depends(get_db)):
-    db_thread = db.query(Thread).filter(Thread.thread_id == thread.thread_id).first()
-    if db_thread:
-        raise HTTPException(status_code=400, detail="Thread ID already exists")
-    
-    new_thread = Thread(
-        user_id=thread.user_id,
-        thread_id=thread.thread_id
-    )
-    
-    db.add(new_thread)
+    db_thread = Thread(user_id=thread.user_id, thread_id=thread.thread_id)
+    db.add(db_thread)
     db.commit()
-    db.refresh(new_thread)
-    return new_thread
+    db.refresh(db_thread)
+    return db_thread
 
-# Retrieve chats
-@app.get("/threads/{thread_id}/chats/")
-def get_chats(thread_id: int, db: Session = Depends(get_db)):
-    chats = db.query(Chat).filter(Chat.thread_id == thread_id).all()
+@app.get("/chats/")
+def get_chats(thread_id: int = Query(...), user_id: int = Query(...), db: Session = Depends(get_db)):
+    chats = db.query(Chat).filter(Chat.thread_id == thread_id, Chat.user_id == user_id).all()
     return chats
 
-# Add chats
-@app.post("/threads/{thread_id}/chats/")
-def create_chat(thread_id: int, chat: ChatCreate, db: Session = Depends(get_db)):
-    new_chat = Chat(
-        thread_id=thread_id,
-        user_id=chat.user_id,
-        message=chat.message
-    )
-    
-    db.add(new_chat)
+@app.post("/chats/")
+def create_chat(chat: ChatCreate, db: Session = Depends(get_db)):
+    db_chat = Chat(thread_id=chat.thread_id, user_id=chat.user_id, message=chat.message)
+    db.add(db_chat)
     db.commit()
-    db.refresh(new_chat)
-    return new_chat
+    db.refresh(db_chat)
+    return db_chat
 
-# delete threads
-# Delete thread and its chats
 @app.delete("/threads/{thread_id}/")
 def delete_thread(thread_id: int, db: Session = Depends(get_db)):
     # Fetch the thread
@@ -208,4 +187,3 @@ def delete_thread(thread_id: int, db: Session = Depends(get_db)):
     db.commit()
     
     return {"message": "Thread and its chats deleted successfully"}
-

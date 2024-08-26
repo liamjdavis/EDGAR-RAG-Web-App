@@ -14,6 +14,8 @@ function Dashboard() {
     const [newMessage, setNewMessage] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
 
+    const userId = Cookies.get('user_id');
+
     // Function to check authentication
     const checkAuth = async () => {
         try {
@@ -60,6 +62,7 @@ function Dashboard() {
             console.error('Error deleting thread:', error);
         }
     };
+    
 
     // Function to load threads
     const loadThreads = async () => {
@@ -102,25 +105,43 @@ function Dashboard() {
     const handleChatSelect = async (threadId) => {
         setSelectedChat(threadId);
         try {
-            const response = await axios.get(`/api/threads/${threadId}/chats`);
-            setMessages(response.data);
+            const response = await axios.get(`/api/chats`, {
+                params: { threadId, user_id: userId }
+            });
+    
+            // Format the messages
+            const formattedMessages = response.data.map((chat, index) => ({
+                id: chat.id,
+                sender: index % 2 === 0 ? 'user' : 'bot', // Assume every other chat is from the user
+                text: chat.message
+            }));
+    
+            setMessages(formattedMessages);
         } catch (error) {
             console.error('Error loading chats:', error);
         }
     };
+    
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (!newMessage.trim()) return;
-
-        const userMessage = { sender: 'user', text: newMessage };
-        const botMessage = { sender: 'bot', text: 'Generating response, this may take a minute ...' };
-
-        setMessages([...messages, userMessage, botMessage]);
+    
+        const userMessage = { id: Date.now(), sender: 'user', text: newMessage };
+        const generatingMessage = { id: Date.now() + 1, sender: 'bot', text: 'Generating response, this may take a minute ...' };
+    
+        setMessages((prevMessages) => [...prevMessages, userMessage, generatingMessage]);
         setNewMessage('');
         setIsGenerating(true);
-
+    
         try {
+            // Save user message
+            await axios.post('/api/addChat', {
+                threadId: selectedChat,
+                user_id: parseInt(userId),
+                message: newMessage
+            });
+    
             // Generate the bot response
             const response = await axios.post('/api/retrieve', {
                 question: newMessage
@@ -129,43 +150,39 @@ function Dashboard() {
                     'Content-Type': 'application/json'
                 }
             });
-        
-            const botResponse = { sender: 'bot', text: response.data.answer };
-        
-            // Update state with the new messages
-            setMessages((prevMessages) => {
-                const updatedMessages = [...prevMessages, { sender: 'user', text: newMessage }, botResponse];
-                return updatedMessages;
+    
+            const botResponse = { id: generatingMessage.id, sender: 'bot', text: response.data.answer };
+    
+            // Save bot message
+            await axios.post('/api/addChat', {
+                threadId: selectedChat,
+                user_id: parseInt(userId),
+                message: response.data.answer
             });
-        
-            // Retrieve userID and save messages
-            const userID = Cookies.get('user_id'); // Retrieve userID from cookie
-        
-            if (!userID) {
-                throw new Error('User ID not found in cookies');
-            }
-            
-            // save chats
-            await Promise.all([
-                axios.post(`/api/addChat`, {
-                    thread_id: selectedChat,
-                    user_id: userID, // Use retrieved user ID
-                    message: newMessage
-                }),
-                axios.post(`/api/addChat`, {
-                    thread_id: selectedChat,
-                    user_id: userID, // Use retrieved user ID
-                    message: response.data.answer
-                })
-            ]);
-        
+    
+            // Update state with the new messages
+            setMessages((prevMessages) => 
+                prevMessages.map((msg) =>
+                    msg.id === generatingMessage.id ? botResponse : msg
+                )
+            );
+    
             setIsGenerating(false);
         } catch (error) {
             console.error('Error sending message:', error);
             setIsGenerating(false);
-        }        
+            // Remove the generating message if there was an error
+            setMessages((prevMessages) => 
+                prevMessages.filter((msg) => msg.id !== generatingMessage.id)
+            );
+            // Optionally, you can add an error message to the chat
+            setMessages((prevMessages) => [
+                ...prevMessages,
+                { id: Date.now(), sender: 'bot', text: 'Sorry, there was an error generating the response.' }
+            ]);
+        }
     };
-
+            
     const handleLogout = async () => {
         try {
             await axios.post('/api/logout');

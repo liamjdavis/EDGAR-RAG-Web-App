@@ -2,8 +2,6 @@ import axios from 'axios';
 import cookie from 'cookie';
 
 export default async function handler(req, res) {
-    const { threadId } = req.query;
-
     if (req.method !== 'POST') {
         return res.status(405).end(); // Method Not Allowed
     }
@@ -15,10 +13,10 @@ export default async function handler(req, res) {
         return res.status(401).json({ message: 'User ID not found in cookies' });
     }
 
-    const { message } = req.body;
+    const { threadId, message } = req.body;
 
     try {
-        const response = await axios.post(`http://user_backend:8000/threads/${threadId}/chats/`, {
+        const response = await axios.post('http://user_backend:8000/chats/', {
             thread_id: parseInt(threadId),
             user_id: parseInt(userId),
             message,
@@ -28,10 +26,12 @@ export default async function handler(req, res) {
             },
         });
 
-        console.log('response', response.data);
-
         res.status(201).json(response.data);
     } catch (error) {
-        res.status(500).json({ message: 'Error adding chat' });
+        if (error.response) {
+            res.status(error.response.status).json({ message: error.response.data.detail || 'Error adding chat' });
+        } else {
+            res.status(500).json({ message: 'Error adding chat' });
+        }
     }
 }
