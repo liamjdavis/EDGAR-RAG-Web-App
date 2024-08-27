@@ -26,7 +26,7 @@ def load_rag_model():
                                                  trust_remote_code=True)
 
     gen_cfg = GenerationConfig.from_pretrained(model_name)
-    gen_cfg.max_new_tokens = 512
+    gen_cfg.max_new_tokens = 256
     gen_cfg.temperature = 0.0000001 
     gen_cfg.return_full_text = True
     gen_cfg.do_sample = True
@@ -47,9 +47,9 @@ def load_rag_model():
     prompt_template_llama3 = """
     <|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
-    You are an assistant for a financial analyst. Use the following context to answer the question at the end. 
-    Be sure to be specific in describing what you are reporting, including any necessary information to understand your response. 
-    If you do not have enough information to answer the question, state that, then report similar figures. 
+    You are an assistant for a financial analyst. Use the following context to answer the question at the end with specfic metrics
+    and datapoints. Be sure to be specific in describing what you are reporting, including any necessary information to understand your response. 
+    If you do not have enough information to answer the question, state that, then report similar figures. Do not make up any information. 
     For each figure, cite the statement where the figure can be found. 
     
     Return in this format:
