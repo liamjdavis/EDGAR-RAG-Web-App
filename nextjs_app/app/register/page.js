@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import Image from 'next/image';
+import Logo from '../../assets/SEC Sleuth Logo.png';
 
 export default function Register() {
     const [email, setEmail] = useState('');
@@ -40,11 +42,20 @@ export default function Register() {
     }
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            <div className="p-6 bg-white rounded shadow-md">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+            <div className="flex flex-col items-center mb-4">
+                <h1 className="mt-2 text-3xl font-bold">SEC Sleuth</h1>
+                <p className="mt-2 text-sm text-gray-600 text-center">
+                    Instantly retrieve and summarize public SEC filings with
+                    our AI—turning complex reports into simple insights for smarter decisions.
+                </p>
+                <Image src={Logo} alt="Logo" width={200} height={200} />
+            </div>
+    
+            <div className="flex flex-col items-center p-6 bg-white rounded shadow-md w-80">
                 <h2 className="mb-4 text-2xl font-bold">Register</h2>
                 {error && <p className="mb-4 text-red-600">{error}</p>}
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} className="w-full">
                     <div className="mb-4">
                         <label className="block mb-2 text-sm font-bold text-gray-700">Email</label>
                         <input
@@ -81,5 +92,5 @@ export default function Register() {
                 </form>
             </div>
         </div>
-    );
+    );    
 }

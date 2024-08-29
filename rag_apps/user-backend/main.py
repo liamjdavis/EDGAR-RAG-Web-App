@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker, Session
 import bcrypt
 from dotenv import load_dotenv
 import os
+import csv
 
 import logging
 logging.basicConfig(level=logging.INFO)
