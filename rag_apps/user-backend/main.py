@@ -79,9 +79,6 @@ class ChatCreate(BaseModel):
     user_id: int
     message: str
 
-# Drop all tables
-Base.metadata.drop_all(bind=engine)
-
 # Call the log_tables function after creating all tables
 Base.metadata.create_all(bind=engine)
 

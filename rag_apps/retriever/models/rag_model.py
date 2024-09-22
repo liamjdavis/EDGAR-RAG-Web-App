@@ -16,7 +16,7 @@ def load_rag_model():
     # Retrieve Hugging Face token from environment variables
     hf_token = os.getenv('HF_TOKEN')
     login(hf_token)
-    model_name = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+    model_name = "microsoft/Phi-3.5-mini-instruct"
     
     bnb_config = BitsAndBytesConfig()
 

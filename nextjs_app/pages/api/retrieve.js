@@ -10,7 +10,7 @@ export default async (req, res) => {
             }, {
                 headers: {
                     'Content-Type': 'application/json'
-                }
+                },
             });
 
             res.status(200).json(response.data);
